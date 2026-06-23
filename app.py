@@ -23,95 +23,164 @@ SENHA_CORRETA = "Pmm@Seinfra#2025"
 def _login_page():
     st.markdown("""
     <style>
-        /* Fundo geral */
+        /* Remove padding padrão do Streamlit */
+        [data-testid="stAppViewContainer"] > .main { padding: 0 !important; }
         [data-testid="stAppViewContainer"] {
-            background: linear-gradient(135deg, #0a3d62 0%, #1a5276 60%, #2471a3 100%);
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #533483 100%);
             min-height: 100vh;
         }
-        [data-testid="stHeader"] { background: transparent; }
+        [data-testid="stHeader"]  { background: transparent !important; }
+        [data-testid="stToolbar"] { visibility: hidden; }
+        #MainMenu, footer         { visibility: hidden; }
 
-        /* Card central */
-        .login-card {
-            background: white;
-            border-radius: 16px;
+        /* Bolhas decorativas de fundo */
+        body::before {
+            content: "";
+            position: fixed;
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(83,52,131,0.5), transparent 70%);
+            top: -100px; left: -100px;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, rgba(15,52,96,0.6), transparent 70%);
+            bottom: -80px; right: -80px;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* Card glassmorphism */
+        .glass-card {
+            background: rgba(255,255,255,0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 24px;
             padding: 48px 40px 40px 40px;
-            max-width: 420px;
-            margin: 80px auto 0 auto;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+            max-width: 400px;
+            margin: 60px auto 0 auto;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.4),
+                        0 0 0 1px rgba(255,255,255,0.05) inset;
         }
-        .brasao-container {
-            text-align: center;
-            margin-bottom: 8px;
+
+        /* Avatar */
+        .avatar-ring {
+            width: 90px; height: 90px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.12);
+            border: 2px solid rgba(255,255,255,0.3);
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px auto;
+            font-size: 42px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
         }
-        .login-titulo {
+
+        /* Textos */
+        .login-title {
             text-align: center;
-            font-size: 20px;
+            font-size: 18px;
             font-weight: 700;
-            color: #0a3d62;
+            color: #ffffff;
             margin: 0 0 4px 0;
-            line-height: 1.3;
+            letter-spacing: 0.3px;
         }
-        .login-subtitulo {
+        .login-sub {
             text-align: center;
-            font-size: 13px;
-            color: #7f8c8d;
-            margin: 0 0 28px 0;
+            font-size: 12px;
+            color: rgba(255,255,255,0.55);
+            margin: 0 0 32px 0;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
         }
-        .login-divider {
-            border: none;
-            border-top: 1px solid #ecf0f1;
-            margin: 0 0 24px 0;
+
+        /* Inputs com estilo escuro */
+        [data-testid="stTextInput"] input {
+            background: rgba(255,255,255,0.08) !important;
+            border: 1px solid rgba(255,255,255,0.2) !important;
+            border-radius: 12px !important;
+            color: #ffffff !important;
+            padding: 14px 16px !important;
+            font-size: 14px !important;
+            transition: border 0.2s;
         }
-        .rodape-login {
+        [data-testid="stTextInput"] input:focus {
+            border: 1px solid rgba(255,255,255,0.5) !important;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.06) !important;
+        }
+        [data-testid="stTextInput"] input::placeholder { color: rgba(255,255,255,0.4) !important; }
+        [data-testid="stTextInput"] label { color: rgba(255,255,255,0.7) !important; font-size:13px !important; }
+
+        /* Botão login */
+        [data-testid="stButton"] > button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 12px !important;
+            padding: 14px !important;
+            font-size: 15px !important;
+            font-weight: 700 !important;
+            letter-spacing: 1.5px !important;
+            text-transform: uppercase !important;
+            width: 100% !important;
+            margin-top: 8px !important;
+            box-shadow: 0 8px 20px rgba(102,126,234,0.4) !important;
+            transition: all 0.2s !important;
+        }
+        [data-testid="stButton"] > button:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 12px 28px rgba(102,126,234,0.55) !important;
+        }
+
+        /* Mensagem de erro */
+        [data-testid="stAlert"] {
+            background: rgba(231,76,60,0.2) !important;
+            border: 1px solid rgba(231,76,60,0.4) !important;
+            border-radius: 10px !important;
+            color: #ff8a80 !important;
+        }
+
+        .rodape-glass {
             text-align: center;
             font-size: 11px;
-            color: #aab7b8;
-            margin-top: 28px;
+            color: rgba(255,255,255,0.3);
+            margin-top: 24px;
+            letter-spacing: 0.5px;
         }
-
-        /* Esconde elementos Streamlit desnecessários na tela de login */
-        #MainMenu, footer, [data-testid="stToolbar"] { visibility: hidden; }
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown('<div class="login-card">', unsafe_allow_html=True)
-
-    # Brasão / ícone
     st.markdown("""
-    <div class="brasao-container">
-        <div style="
-            width:72px; height:72px; border-radius:50%;
-            background:linear-gradient(135deg,#0a3d62,#2471a3);
-            display:flex; align-items:center; justify-content:center;
-            margin:0 auto 16px auto;
-            font-size:36px; line-height:72px; text-align:center;
-        ">🏛️</div>
-    </div>
-    <p class="login-titulo">Prefeitura Municipal de Maracanaú</p>
-    <p class="login-subtitulo">Sistema de Controle de Recebimento – SEINFRA</p>
-    <hr class="login-divider">
-    """, unsafe_allow_html=True)
-
-    senha = st.text_input(
-        "🔒  Senha de acesso",
-        type="password",
-        placeholder="Digite a senha...",
-        label_visibility="collapsed",
-    )
-
-    entrar = st.button("Entrar", type="primary", use_container_width=True)
-
-    if entrar:
-        if senha == SENHA_CORRETA:
-            st.session_state["autenticado"] = True
-            st.rerun()
-        else:
-            st.error("Senha incorreta. Tente novamente.")
-
-    st.markdown("""
-    <p class="rodape-login">Acesso restrito a servidores autorizados da SEINFRA</p>
+    <div class="glass-card">
+        <div class="avatar-ring">🏛️</div>
+        <p class="login-title">Prefeitura de Maracanaú</p>
+        <p class="login-sub">SEINFRA · Controle de Recebimento</p>
     </div>
     """, unsafe_allow_html=True)
+
+    # Inputs dentro do card via CSS overlap
+    with st.container():
+        st.markdown('<div style="max-width:400px;margin:0 auto;margin-top:-220px;padding:0 40px;">', unsafe_allow_html=True)
+
+        senha = st.text_input(
+            "Senha",
+            type="password",
+            placeholder="••••••••••••••••",
+        )
+        entrar = st.button("LOGIN", use_container_width=True)
+
+        if entrar:
+            if senha == SENHA_CORRETA:
+                st.session_state["autenticado"] = True
+                st.rerun()
+            else:
+                st.error("Senha incorreta. Tente novamente.")
+
+        st.markdown('<p class="rodape-glass">Acesso restrito · SEINFRA</p>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 # ── Controle de sessão ─────────────────────────────────────────────────────────
 if not st.session_state.get("autenticado"):
