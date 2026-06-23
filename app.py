@@ -12,13 +12,124 @@ from gerador_docx import gerar
 
 # ── Configuração da página ─────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="Controle de Recebimento",
-    page_icon="📋",
+    page_title="SEINFRA – Controle de Recebimento",
+    page_icon="🏛️",
     layout="wide",
 )
 
-st.title("📋 Gerador de Controle de Recebimento")
-st.caption("Prefeitura Municipal de Maracanaú – SEINFRA")
+# ── Senha de acesso ────────────────────────────────────────────────────────────
+SENHA_CORRETA = "Pmm@Seinfra#2025"
+
+def _login_page():
+    st.markdown("""
+    <style>
+        /* Fundo geral */
+        [data-testid="stAppViewContainer"] {
+            background: linear-gradient(135deg, #0a3d62 0%, #1a5276 60%, #2471a3 100%);
+            min-height: 100vh;
+        }
+        [data-testid="stHeader"] { background: transparent; }
+
+        /* Card central */
+        .login-card {
+            background: white;
+            border-radius: 16px;
+            padding: 48px 40px 40px 40px;
+            max-width: 420px;
+            margin: 80px auto 0 auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+        }
+        .brasao-container {
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .login-titulo {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 700;
+            color: #0a3d62;
+            margin: 0 0 4px 0;
+            line-height: 1.3;
+        }
+        .login-subtitulo {
+            text-align: center;
+            font-size: 13px;
+            color: #7f8c8d;
+            margin: 0 0 28px 0;
+        }
+        .login-divider {
+            border: none;
+            border-top: 1px solid #ecf0f1;
+            margin: 0 0 24px 0;
+        }
+        .rodape-login {
+            text-align: center;
+            font-size: 11px;
+            color: #aab7b8;
+            margin-top: 28px;
+        }
+
+        /* Esconde elementos Streamlit desnecessários na tela de login */
+        #MainMenu, footer, [data-testid="stToolbar"] { visibility: hidden; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown('<div class="login-card">', unsafe_allow_html=True)
+
+    # Brasão / ícone
+    st.markdown("""
+    <div class="brasao-container">
+        <div style="
+            width:72px; height:72px; border-radius:50%;
+            background:linear-gradient(135deg,#0a3d62,#2471a3);
+            display:flex; align-items:center; justify-content:center;
+            margin:0 auto 16px auto;
+            font-size:36px; line-height:72px; text-align:center;
+        ">🏛️</div>
+    </div>
+    <p class="login-titulo">Prefeitura Municipal de Maracanaú</p>
+    <p class="login-subtitulo">Sistema de Controle de Recebimento – SEINFRA</p>
+    <hr class="login-divider">
+    """, unsafe_allow_html=True)
+
+    senha = st.text_input(
+        "🔒  Senha de acesso",
+        type="password",
+        placeholder="Digite a senha...",
+        label_visibility="collapsed",
+    )
+
+    entrar = st.button("Entrar", type="primary", use_container_width=True)
+
+    if entrar:
+        if senha == SENHA_CORRETA:
+            st.session_state["autenticado"] = True
+            st.rerun()
+        else:
+            st.error("Senha incorreta. Tente novamente.")
+
+    st.markdown("""
+    <p class="rodape-login">Acesso restrito a servidores autorizados da SEINFRA</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ── Controle de sessão ─────────────────────────────────────────────────────────
+if not st.session_state.get("autenticado"):
+    _login_page()
+    st.stop()
+
+# ── Barra superior com logout ──────────────────────────────────────────────────
+col_titulo, col_logout = st.columns([8, 1])
+with col_titulo:
+    st.title("📋 Gerador de Controle de Recebimento")
+    st.caption("Prefeitura Municipal de Maracanaú – SEINFRA")
+with col_logout:
+    st.write("")
+    if st.button("🚪 Sair", help="Encerrar sessão"):
+        st.session_state["autenticado"] = False
+        st.rerun()
+
+st.divider()
 
 # ── Upload do PDF ──────────────────────────────────────────────────────────────
 st.header("1. Ordem de Fornecimento (PDF)")
@@ -59,7 +170,7 @@ with col2:
     dados["ata"]        = st.text_input("Ata de Reg. de Preços", dados.get("ata","10.004/2024"))
     dados["valor_of"]   = st.text_input("Valor total da Ordem (R$)", dados.get("valor_of",""))
 
-# ── Dados do recebimento (obrigatórios) ───────────────────────────────────────
+# ── Dados do recebimento ───────────────────────────────────────────────────────
 st.header("3. Dados do recebimento")
 
 col3, col4 = st.columns(2)
@@ -83,7 +194,7 @@ with col4:
         "DIRETOR PÁTIO DE MANUTENÇÃO – SEINFRA",
     )
 
-# ── Tabela de itens (editável) ────────────────────────────────────────────────
+# ── Tabela de itens ────────────────────────────────────────────────────────────
 st.header("4. Itens da Ordem")
 
 if n_itens == 0:
@@ -117,7 +228,6 @@ edited = st.data_editor(
     height=min(400, 60 + 35 * max(1, len(df_items))),
 )
 
-# Atualiza itens com o que o usuário editou
 dados["items"] = edited.to_dict("records")
 
 # ── Gerar DOCX ────────────────────────────────────────────────────────────────
