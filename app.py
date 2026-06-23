@@ -18,7 +18,8 @@ st.set_page_config(
 )
 
 # ── Senha de acesso ────────────────────────────────────────────────────────────
-SENHA_CORRETA = "Pmm@Seinfra#2025"
+USUARIO_CORRETO = "Crislene"
+SENHA_CORRETA   = "Pmm@Seinfra#2025"
 
 def _login_page():
     st.markdown("""
@@ -165,6 +166,10 @@ def _login_page():
     with st.container():
         st.markdown('<div style="max-width:400px;margin:0 auto;margin-top:-220px;padding:0 40px;">', unsafe_allow_html=True)
 
+        usuario = st.text_input(
+            "Usuário",
+            placeholder="Nome de usuário",
+        )
         senha = st.text_input(
             "Senha",
             type="password",
@@ -173,11 +178,11 @@ def _login_page():
         entrar = st.button("LOGIN", use_container_width=True)
 
         if entrar:
-            if senha == SENHA_CORRETA:
+            if usuario.strip().lower() == USUARIO_CORRETO.lower() and senha == SENHA_CORRETA:
                 st.session_state["autenticado"] = True
                 st.rerun()
             else:
-                st.error("Senha incorreta. Tente novamente.")
+                st.error("Usuário ou senha incorretos. Tente novamente.")
 
         st.markdown('<p class="rodape-glass">Acesso restrito · SEINFRA</p>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
