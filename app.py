@@ -228,6 +228,9 @@ with st.spinner("📖 Lendo PDF e extraindo dados..."):
 n_itens = len(dados.get("items", []))
 st.success(f"✅ PDF lido com sucesso — **{n_itens} item(s)** encontrado(s).")
 
+with st.expander("🔍 DEBUG – texto bruto do OCR (para suporte técnico)"):
+    st.text(dados.get("_ocr_text", "(não disponível)"))
+
 # Objeto extraído automaticamente (editável)
 dados["objeto"] = st.text_area(
     "📋 Objeto da Ordem (extraído automaticamente — edite se necessário)",

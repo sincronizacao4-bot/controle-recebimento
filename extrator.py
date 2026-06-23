@@ -264,4 +264,5 @@ def extrair(pdf_bytes: bytes) -> dict:
         "endereco_entrega": endereco,
         "objeto":     objeto,
         "items":      items,
+        "_ocr_text":  full,
     }
