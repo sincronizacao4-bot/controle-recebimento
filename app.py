@@ -108,41 +108,29 @@ def _login_page():
     <style>
       /* ── Fundo ── */
       [data-testid="stAppViewContainer"] {{
-        background: linear-gradient(135deg,#1a1a2e 0%,#16213e 40%,#0f3460 70%,#533483 100%);
-        min-height:100vh;
-      }}
-      [data-testid="stAppViewContainer"] > .main {{
-        display:flex; align-items:center; justify-content:center;
-        min-height:100vh; padding:0 !important;
+        background: linear-gradient(135deg,#1a1a2e 0%,#16213e 40%,#0f3460 70%,#533483 100%) !important;
+        min-height: 100vh;
       }}
       [data-testid="stHeader"], [data-testid="stToolbar"] {{ display:none !important; }}
       #MainMenu, footer {{ visibility:hidden; }}
 
-      /* ── Card centralizado ── */
-      [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"],
+      /* ── Glass card aplicado ao container do Streamlit ── */
       .block-container {{
-        padding: 0 !important; max-width:440px !important;
-      }}
-      section.main > div {{
-        display:flex; justify-content:center; padding-top:60px;
-      }}
-
-      /* Aplica glass ao bloco principal */
-      .login-wrap {{
-        background: rgba(255,255,255,0.07);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        border: 1px solid rgba(255,255,255,0.15);
-        border-radius: 28px;
-        padding: 44px 40px 36px;
-        width: 420px;
-        box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        max-width: 460px !important;
+        margin: 0 auto !important;
+        padding: 44px 40px 36px !important;
+        background: rgba(255,255,255,0.07) !important;
+        backdrop-filter: blur(24px) !important;
+        -webkit-backdrop-filter: blur(24px) !important;
+        border: 1px solid rgba(255,255,255,0.15) !important;
+        border-radius: 28px !important;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.5) !important;
+        margin-top: 60px !important;
       }}
 
       /* ── Avatar dourado ── */
       .gold-wrap {{
-        position:relative; width:116px; height:116px;
-        margin:0 auto 20px;
+        position:relative; width:116px; height:116px; margin:0 auto 20px;
       }}
       .gold-spin {{
         position:absolute; inset:0; border-radius:22px;
@@ -171,27 +159,24 @@ def _login_page():
       }}
       .gold-inner img {{ width:80px; height:80px; object-fit:contain; }}
 
-      /* ── Textos ── */
       .lt {{ text-align:center;font-size:19px;font-weight:700;
               color:#fff;margin:0 0 4px;letter-spacing:.3px; }}
       .ls {{ text-align:center;font-size:11px;color:rgba(255,255,255,.5);
-              margin:0 0 28px;letter-spacing:.8px;text-transform:uppercase; }}
+              margin:0 0 24px;letter-spacing:.8px;text-transform:uppercase; }}
 
       /* ── Inputs ── */
       [data-testid="stTextInput"] label {{
-        color:rgba(255,255,255,.7) !important; font-size:13px !important; }}
+        color:rgba(255,255,255,.75) !important; font-size:13px !important; }}
       [data-testid="stTextInput"] input {{
         background:rgba(255,255,255,.08) !important;
         border:1px solid rgba(255,255,255,.2) !important;
-        border-radius:12px !important; color:#fff !important;
-        font-size:14px !important;
+        border-radius:12px !important; color:#fff !important; font-size:14px !important;
       }}
       [data-testid="stTextInput"] input:focus {{
         border-color:rgba(255,255,255,.5) !important;
         box-shadow:0 0 0 3px rgba(255,255,255,.06) !important;
       }}
-      [data-testid="stTextInput"] input::placeholder {{
-        color:rgba(255,255,255,.35) !important; }}
+      [data-testid="stTextInput"] input::placeholder {{ color:rgba(255,255,255,.35) !important; }}
 
       /* ── Botão ── */
       [data-testid="stButton"] > button {{
@@ -214,22 +199,20 @@ def _login_page():
         border:1px solid rgba(231,76,60,.4) !important;
         border-radius:10px !important; color:#ff8a80 !important;
       }}
-      .lf {{ text-align:center;font-size:11px;
-              color:rgba(255,255,255,.25);margin-top:20px;letter-spacing:.5px; }}
+      .lf {{ text-align:center;font-size:11px;color:rgba(255,255,255,.25);
+              margin-top:18px;letter-spacing:.5px; }}
     </style>
 
-    <div class="login-wrap">
-      <div class="gold-wrap">
-        <div class="gold-spin"></div>
-        <div class="gold-dot"></div>
-        <div class="gold-dot d2"></div>
-        <div class="gold-inner">
-          {"<img src='" + logo_src + "'/>" if logo_src else "🏛️"}
-        </div>
+    <div class="gold-wrap">
+      <div class="gold-spin"></div>
+      <div class="gold-dot"></div>
+      <div class="gold-dot d2"></div>
+      <div class="gold-inner">
+        {"<img src='" + logo_src + "'/>" if logo_src else "🏛️"}
       </div>
-      <p class="lt">Prefeitura de Maracanaú</p>
-      <p class="ls">SEINFRA · Controle de Recebimento</p>
     </div>
+    <p class="lt">Prefeitura de Maracanaú</p>
+    <p class="ls">SEINFRA · Controle de Recebimento</p>
     """, unsafe_allow_html=True)
 
     _constellation()
