@@ -212,11 +212,26 @@ def _parse_items(full_text: str) -> list[dict]:
             unidade = best_unidade(bloco)
 
         # ══ ESTRATÉGIA 3: listas globais indexadas ════════════════════════════
-        if not qtd    and idx < len(g_qtd):    qtd    = g_qtd[idx]
-        if not v_unit and idx < len(g_vunit):  v_unit = g_vunit[idx]
+        if not qtd     and idx < len(g_qtd):    qtd    = g_qtd[idx]
+        if not v_unit  and idx < len(g_vunit):  v_unit = g_vunit[idx]
         if not v_total and idx < len(g_vtotal): v_total = g_vtotal[idx]
-        if not marca  and idx < len(g_marca):  marca  = g_marca[idx]
+        if not marca   and idx < len(g_marca):  marca  = g_marca[idx]
         if not unidade: unidade = "UNIDADE"
+
+        # Calcula VALOR TOTAL quando o OCR não leu (qtd × vunit)
+        if not v_total and qtd and v_unit:
+            try:
+                def _to_float(s):
+                    s = clean_num(s)
+                    # Formato brasileiro: 1.234,56
+                    if "," in s and "." in s:
+                        s = s.replace(".", "").replace(",", ".")
+                    elif "," in s:
+                        s = s.replace(",", ".")
+                    return float(s)
+                v_total = f"{_to_float(qtd) * _to_float(v_unit):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            except Exception:
+                pass
 
         items.append({
             "codigo":         codigo,
