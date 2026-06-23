@@ -6,9 +6,108 @@ App web com Streamlit — funciona em qualquer navegador, sem instalar nada.
 import streamlit as st
 import pandas as pd
 from datetime import date
+import streamlit.components.v1 as components
 
 from extrator import extrair
 from gerador_docx import gerar
+
+
+# ── Efeito constelação (fundo animado) ────────────────────────────────────────
+def _constellation():
+    components.html("""
+    <style>
+      #cv { position:fixed; top:0; left:0; width:100vw; height:100vh;
+            pointer-events:none; z-index:0; }
+    </style>
+    <canvas id="cv"></canvas>
+    <script>
+    (function(){
+      const cv  = document.getElementById('cv');
+      const ctx = cv.getContext('2d');
+      let W, H, stars = [], mouse = {x:-9999, y:-9999};
+      const N = 130, LINK = 140, MOUSE_R = 180;
+
+      function resize(){
+        W = cv.width  = window.innerWidth;
+        H = cv.height = window.innerHeight;
+      }
+
+      function init(){
+        stars = [];
+        for(let i=0;i<N;i++) stars.push({
+          x : Math.random()*W,
+          y : Math.random()*H,
+          vx: (Math.random()-.5)*.35,
+          vy: (Math.random()-.5)*.35,
+          r : Math.random()*1.4+.5
+        });
+      }
+
+      function draw(){
+        ctx.clearRect(0,0,W,H);
+
+        // mover estrelas
+        stars.forEach(s=>{
+          s.x+=s.vx; s.y+=s.vy;
+          if(s.x<0||s.x>W) s.vx*=-1;
+          if(s.y<0||s.y>H) s.vy*=-1;
+        });
+
+        // linhas entre estrelas próximas
+        for(let i=0;i<stars.length;i++){
+          for(let j=i+1;j<stars.length;j++){
+            let dx=stars[j].x-stars[i].x, dy=stars[j].y-stars[i].y;
+            let d=Math.hypot(dx,dy);
+            if(d<LINK){
+              ctx.beginPath();
+              ctx.strokeStyle=`rgba(180,210,255,${.25*(1-d/LINK)})`;
+              ctx.lineWidth=.5;
+              ctx.moveTo(stars[i].x,stars[i].y);
+              ctx.lineTo(stars[j].x,stars[j].y);
+              ctx.stroke();
+            }
+          }
+          // linha ao mouse
+          let dx=mouse.x-stars[i].x, dy=mouse.y-stars[i].y;
+          let d=Math.hypot(dx,dy);
+          if(d<MOUSE_R){
+            ctx.beginPath();
+            ctx.strokeStyle=`rgba(150,200,255,${.8*(1-d/MOUSE_R)})`;
+            ctx.lineWidth=.8;
+            ctx.moveTo(stars[i].x,stars[i].y);
+            ctx.lineTo(mouse.x,mouse.y);
+            ctx.stroke();
+          }
+        }
+
+        // desenha estrelas
+        stars.forEach(s=>{
+          ctx.beginPath();
+          ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+          ctx.fillStyle='rgba(255,255,255,.85)';
+          ctx.fill();
+        });
+
+        requestAnimationFrame(draw);
+      }
+
+      // captura mouse do documento pai (Streamlit)
+      try {
+        window.parent.document.addEventListener('mousemove', e=>{
+          let rect = cv.getBoundingClientRect();
+          mouse.x = e.clientX; mouse.y = e.clientY;
+        });
+      } catch(e) {
+        document.addEventListener('mousemove', e=>{
+          mouse.x=e.clientX; mouse.y=e.clientY;
+        });
+      }
+
+      window.addEventListener('resize', ()=>{ resize(); init(); });
+      resize(); init(); draw();
+    })();
+    </script>
+    """, height=0, scrolling=False)
 
 # ── Configuração da página ─────────────────────────────────────────────────────
 st.set_page_config(
@@ -154,6 +253,8 @@ def _login_page():
     </style>
     """, unsafe_allow_html=True)
 
+    _constellation()
+
     st.markdown("""
     <div class="glass-card">
         <div class="avatar-ring">🏛️</div>
@@ -193,6 +294,7 @@ if not st.session_state.get("autenticado"):
     st.stop()
 
 # ── Barra superior com logout ──────────────────────────────────────────────────
+_constellation()
 col_titulo, col_logout = st.columns([8, 1])
 with col_titulo:
     st.title("📋 Gerador de Controle de Recebimento")
