@@ -89,7 +89,7 @@ def _norm(text: str) -> str:
     return text.strip()
 
 
-_DASH = r"[\-–—•‣►·•‣�]"   # vários separadores que o OCR pode gerar
+_DASH = r"[\-–—•‣►·•‣�|]"   # vários separadores que o OCR pode gerar (incl. pipe)
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -130,9 +130,9 @@ def _parse_items(full_text: str) -> list[dict]:
         return []
 
     # ── 2. Coleta listas globais (fallback para Layout B) ─────────────────────
-    all_qtd    = _findall(r"QUANTIDADE\s+([\d.,]+)", full_text)
-    all_vunit  = _findall(r"VALOR\s+UNIT[A-Z.]*\s+R\$\s*([\d.,]+)", full_text)
-    all_vtotal = _findall(r"VALOR\s+TOTAL\s+(?:R\$|RS)?\s*([\d.,'OoIl,]+)", full_text)
+    all_qtd    = _findall(r"QUANTIDADE\s*:?\s*([\d.,]+)", full_text)
+    all_vunit  = _findall(r"VALOR\s+UNIT[A-Z.]*\s*(?:R\s?\$|RS)?\s*([\d.,]+)", full_text)
+    all_vtotal = _findall(r"VALOR\s+TOTAL\s+(?:R\s?\$|RS)?\s*([\d.,'OoIl ]+)", full_text)
 
     # Limpa OCR comum: "OO" → "00", "l" ou "I" → "1" nos valores
     def clean_val(v: str) -> str:
@@ -153,28 +153,33 @@ def _parse_items(full_text: str) -> list[dict]:
             descricao_raw, flags=re.IGNORECASE
         ).strip()
 
-        # Marca e unidade buscadas no bloco
-        marca   = _find(r"MARCA\s+(\S+)", bloco)
-        unidade_raw = _find(r"UNIDADE\s+(\S+(?:\s+\S+){0,3})", bloco)
-        # Se unidade começa com dígito → é "UNIDADE 1.0 UNIDADE" → simplifica
-        unidade = "SACO" if re.search(r"\bSACO\b", bloco, re.I) else (
-                  "UNIDADE" if (not unidade_raw or re.match(r"^\d", unidade_raw))
-                  else unidade_raw.split()[0].upper()
-        )
+        # Marca — pula caracteres que não são letras (pipe, barra, etc.)
+        marca = _find(r"MARCA\s+([A-Za-zÀ-ú][\w\-À-ú]*)", bloco)
+        if not marca:
+            marca = _find(r"MARCA\s+\S*\s+([A-Za-zÀ-ú][\w\-À-ú]*)", bloco)
 
-        # Quantidade
-        qtd = _find(r"QUANTIDADE\s+([\d.,]+)", bloco)
+        # Unidade
+        unidade_raw = _find(r"UNIDADE\s+([A-Za-zÀ-ú]\S*(?:\s+\S+){0,2})", bloco)
+        if re.search(r"\bSACO\b", bloco, re.I):
+            unidade = "SACO"
+        elif not unidade_raw or re.match(r"^\d", unidade_raw):
+            unidade = "UNIDADE"
+        else:
+            unidade = unidade_raw.split()[0].upper()
+
+        # Quantidade — aceita também sem espaço antes do número
+        qtd = _find(r"QUANTIDADE\s*:?\s*([\d.,]+)", bloco)
         if not qtd and idx < len(all_qtd):
             qtd = all_qtd[idx]
 
-        # Valor unitário
-        v_unit = _find(r"VALOR\s+UNIT[A-Z.]*\s+R\$\s*([\d.,]+)", bloco)
+        # Valor unitário — aceita R$, RS, R $, ausência do símbolo
+        v_unit = _find(r"VALOR\s+UNIT[A-Z.]*\s*(?:R\s?\$|RS)?\s*([\d.,]+)", bloco)
         if not v_unit and idx < len(all_vunit):
             v_unit = all_vunit[idx]
 
-        # Valor total (pega ÚLTIMO match no bloco para evitar pegar do item anterior)
+        # Valor total — pega ÚLTIMO match no bloco
         vtotal_matches = re.findall(
-            r"VALOR\s+TOTAL\s+(?:R\$|RS)?\s*([\d.,' OoIl]+)", bloco, re.IGNORECASE
+            r"VALOR\s+TOTAL\s+(?:R\s?\$|RS)?\s*([\d.,' OoIl]+)", bloco, re.IGNORECASE
         )
         v_total = clean_val(vtotal_matches[-1]) if vtotal_matches else ""
         if not v_total and idx < len(all_vtotal):
