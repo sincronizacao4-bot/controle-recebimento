@@ -154,6 +154,13 @@ with st.spinner("📖 Lendo PDF e extraindo dados..."):
 n_itens = len(dados.get("items", []))
 st.success(f"✅ PDF lido com sucesso — **{n_itens} item(s)** encontrado(s).")
 
+# Objeto extraído automaticamente (editável)
+dados["objeto"] = st.text_area(
+    "📋 Objeto da Ordem (extraído automaticamente — edite se necessário)",
+    value=dados.get("objeto", ""),
+    height=80,
+)
+
 # ── Exibe / edita dados extraídos ─────────────────────────────────────────────
 st.header("2. Dados extraídos (verifique e corrija se necessário)")
 
@@ -189,6 +196,7 @@ with col4:
         "Responsável pelo Recebimento",
         "Clayton Rocha Braz",
     )
+    dados["matricula"] = st.text_input("Matrícula", "52680")
     dados["cargo"] = st.text_input(
         "Cargo",
         "DIRETOR PÁTIO DE MANUTENÇÃO – SEINFRA",
@@ -229,6 +237,33 @@ edited = st.data_editor(
 )
 
 dados["items"] = edited.to_dict("records")
+
+# ── Validação de valores ───────────────────────────────────────────────────────
+def _parse_valor(v: str) -> float:
+    """Converte '11.548,15' ou '11548.15' para float."""
+    try:
+        v = str(v).strip().replace(" ", "")
+        if "," in v and "." in v:
+            v = v.replace(".", "").replace(",", ".")
+        elif "," in v:
+            v = v.replace(",", ".")
+        return float(v)
+    except Exception:
+        return 0.0
+
+_total_itens = sum(_parse_valor(i.get("valor_total", 0)) for i in dados["items"])
+_valor_of    = _parse_valor(dados.get("valor_of", "0"))
+
+if dados["items"] and _valor_of > 0:
+    _diff = abs(_total_itens - _valor_of)
+    if _diff > 0.10:
+        st.warning(
+            f"⚠️ **Atenção:** A soma dos itens (**R$ {_total_itens:,.2f}**) "
+            f"não bate com o valor da Ordem (**R$ {_valor_of:,.2f}**). "
+            f"Diferença de R$ {_diff:,.2f}. Verifique os valores antes de gerar."
+        )
+    else:
+        st.info(f"✅ Soma dos itens: **R$ {_total_itens:,.2f}** — confere com o valor da Ordem.")
 
 # ── Gerar DOCX ────────────────────────────────────────────────────────────────
 st.header("5. Gerar documento")

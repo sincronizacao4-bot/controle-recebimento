@@ -231,6 +231,12 @@ def extrair(pdf_bytes: bytes) -> dict:
     almox    = _find(r"ALMOXARIFADO[:\s]+(.+?)(?:\n|ENDERE)", p1)
     endereco = _find(r"ENDERE[CÇ]O\s+DE\s+ENTREGA[:\s]+(.+?)(?:\n|PRAZO)", p1)
 
+    # Objeto — linha de observações/aquisição
+    objeto = _find(
+        r"(Aquisi[çc][aã]o\s+.+?)(?:\n[A-Z]{2,}|\Z)", full, flags=re.IGNORECASE | re.DOTALL
+    )
+    objeto = re.sub(r"\s+", " ", objeto).strip()[:400] if objeto else ""
+
     # ── Itens (todas as páginas após a 1ª) ────────────────────────────────────
     # Texto de itens começa na página 2 em diante
     items_text = _norm("\n".join(pages_text[1:])) if len(pages_text) > 1 else ""
@@ -251,5 +257,6 @@ def extrair(pdf_bytes: bytes) -> dict:
         "setor":      setor,
         "almox":      almox,
         "endereco_entrega": endereco,
+        "objeto":     objeto,
         "items":      items,
     }
