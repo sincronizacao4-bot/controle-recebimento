@@ -5,9 +5,19 @@ App web com Streamlit — funciona em qualquer navegador, sem instalar nada.
 
 import streamlit as st
 import pandas as pd
+import base64, os
 from datetime import date
 from extrator import extrair
 from gerador_docx import gerar
+
+_BRASAO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "brasao.png")
+
+def _brasao_b64() -> str:
+    try:
+        with open(_BRASAO_PATH, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    except Exception:
+        return ""
 
 
 # ── Efeito constelação (fundo animado) ────────────────────────────────────────
@@ -224,12 +234,64 @@ def _login_page():
     """, unsafe_allow_html=True)
 
     _constellation()
+    b64 = _brasao_b64()
+    logo_html = f'<img src="data:image/png;base64,{b64}" style="width:72px;height:72px;object-fit:contain;border-radius:8px;" />' if b64 else "🏛️"
 
-    st.markdown("""
+    st.markdown(f"""
+    <style>
+      /* Wrapper do avatar quadrado com borda dourada giratória */
+      .gold-square-wrap {{
+        position: relative;
+        width: 110px; height: 110px;
+        margin: 0 auto 22px auto;
+      }}
+      /* Borda giratória — conic-gradient dourado */
+      .gold-spinner {{
+        position: absolute; inset: 0;
+        border-radius: 20px;
+        background: conic-gradient(
+          from 0deg,
+          #FFD700 0%, #FFF0A0 15%, #FFA500 30%,
+          transparent 45%, transparent 55%,
+          #FFA500 70%, #FFF0A0 85%, #FFD700 100%
+        );
+        animation: gold-spin 2.5s linear infinite;
+      }}
+      @keyframes gold-spin {{ to {{ transform: rotate(360deg); }} }}
+
+      /* Partícula dourada orbitando */
+      .gold-dot {{
+        position: absolute;
+        width: 7px; height: 7px;
+        background: radial-gradient(circle, #FFD700, #FFA500);
+        border-radius: 50%;
+        box-shadow: 0 0 8px 2px #FFD700;
+        animation: gold-orbit 2.5s linear infinite;
+        top: -3.5px; left: calc(50% - 3.5px);
+        transform-origin: 3.5px calc(55px + 3.5px);
+      }}
+      .gold-dot:nth-child(2) {{ animation-delay: -1.25s; }}
+      @keyframes gold-orbit {{ to {{ transform: rotate(360deg); }} }}
+
+      /* Interior do quadrado */
+      .gold-inner {{
+        position: absolute; inset: 3px;
+        border-radius: 17px;
+        background: rgba(15,30,65,0.92);
+        display: flex; align-items: center; justify-content: center;
+        overflow: hidden;
+      }}
+    </style>
+
     <div class="glass-card">
-        <div class="avatar-ring">🏛️</div>
-        <p class="login-title">Prefeitura de Maracanaú</p>
-        <p class="login-sub">SEINFRA · Controle de Recebimento</p>
+      <div class="gold-square-wrap">
+        <div class="gold-spinner"></div>
+        <div class="gold-dot"></div>
+        <div class="gold-dot"></div>
+        <div class="gold-inner">{logo_html}</div>
+      </div>
+      <p class="login-title">Prefeitura de Maracanaú</p>
+      <p class="login-sub">SEINFRA · Controle de Recebimento</p>
     </div>
     """, unsafe_allow_html=True)
 
