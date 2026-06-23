@@ -105,85 +105,87 @@ def _findall(pattern: str, text: str) -> list[str]:
 # ── Parser de itens ────────────────────────────────────────────────────────────
 def _parse_items(full_text: str) -> list[dict]:
     """
-    Suporta dois layouts:
+    Layout Tesseract (Streamlit Cloud / Linux):
 
-    Layout A (tabela com linha separada por item):
       13012 - CIMENTO - 50 KG
-      MARCA   UNIDADE   QUANTIDADE   VALOR UNITARIO   VALOR TOTAL
-      POTY    SACO      355,00       R$ 32,53         R$ 11.548,15
+      MARCA | UNIDADE | QUANTIDADE  VALOR UNITARIO  VALOR TOTAL   ← cabeçalho tabela
+      POTY    SACO      355,00       R$ 32,53        R$ 11.548,15  ← valores
 
-    Layout B (OCR desestruturado – tudo numa linha):
-      13012 - CIMENTO 50 KG MARCA POTY UNIDADE SACO QUANTIDADE 355,00 ...
-      (todos os VALOR UNITARIO no final, todos os VALOR TOTAL no final)
+    Estratégia:
+      1. Acha cada bloco pelo cabeçalho CÓDIGO - DESCRIÇÃO
+      2. Dentro do bloco, localiza a linha de cabeçalho da tabela (contém MARCA e QUANTIDADE)
+      3. A linha imediatamente seguinte contém os valores na mesma ordem
+      4. Extrai valores monetários da direita para a esquerda; QTD é o número antes do 1º R$
     """
 
-    # ── 1. Localiza cabeçalhos de item ────────────────────────────────────────
-    header_re = re.compile(
-        rf"\b(\d{{4,6}})\s*{_DASH}\s*(.+?)(?=\n|MARCA|\s+\d{{4,6}}\s*{_DASH}|\Z)",
-        re.IGNORECASE,
+    def clean_num(v: str) -> str:
+        v = str(v).strip()
+        v = v.replace("OO","00").replace("O","0").replace("l","1").replace("I","1")
+        return v.replace(" ","")
+
+    # Localiza início de cada item: linha com "CÓDIGO - DESCRIÇÃO"
+    item_hdr = re.compile(
+        rf"^[ \t]*(\d{{4,6}})\s*{_DASH}\s*(.+?)[ \t]*$",
+        re.MULTILINE | re.IGNORECASE,
     )
-    starts = []
-    for m in header_re.finditer(full_text):
-        starts.append((m.start(), m.group(1), m.group(2).strip()))
+    starts = [(m.start(), m.group(1), m.group(2).strip())
+              for m in item_hdr.finditer(full_text)]
 
     if not starts:
         return []
 
-    # ── 2. Coleta listas globais (fallback para Layout B) ─────────────────────
-    all_qtd    = _findall(r"QUANTIDADE\s*:?\s*([\d.,]+)", full_text)
-    all_vunit  = _findall(r"VALOR\s+UNIT[A-Z.]*\s*(?:R\s?\$|RS)?\s*([\d.,]+)", full_text)
-    all_vtotal = _findall(r"VALOR\s+TOTAL\s+(?:R\s?\$|RS)?\s*([\d.,'OoIl ]+)", full_text)
-
-    # Limpa OCR comum: "OO" → "00", "l" ou "I" → "1" nos valores
-    def clean_val(v: str) -> str:
-        v = v.replace("OO", "00").replace("O", "0").replace("l", "1").replace("I", "1")
-        v = v.replace(" ", "")
-        return v
-
-    all_vtotal = [clean_val(v) for v in all_vtotal]
-
     items = []
-    for idx, (pos, codigo, descricao_raw) in enumerate(starts):
+    for idx, (pos, codigo, desc_raw) in enumerate(starts):
         end_pos = starts[idx + 1][0] if idx + 1 < len(starts) else len(full_text)
         bloco = full_text[pos:end_pos]
 
-        # Limpa descrição
+        # Descrição — remove tudo após MARCA/UNIDADE/etc.
         descricao = re.sub(
             r"\s*(MARCA|UNIDADE|QUANTIDADE|VALOR|Total).*", "",
-            descricao_raw, flags=re.IGNORECASE
+            desc_raw, flags=re.IGNORECASE
         ).strip()
 
-        # Marca — pula caracteres que não são letras (pipe, barra, etc.)
-        marca = _find(r"MARCA\s+([A-Za-zÀ-ú][\w\-À-ú]*)", bloco)
-        if not marca:
-            marca = _find(r"MARCA\s+\S*\s+([A-Za-zÀ-ú][\w\-À-ú]*)", bloco)
-
-        # Unidade
-        unidade_raw = _find(r"UNIDADE\s+([A-Za-zÀ-ú]\S*(?:\s+\S+){0,2})", bloco)
-        if re.search(r"\bSACO\b", bloco, re.I):
-            unidade = "SACO"
-        elif not unidade_raw or re.match(r"^\d", unidade_raw):
-            unidade = "UNIDADE"
-        else:
-            unidade = unidade_raw.split()[0].upper()
-
-        # Quantidade — aceita também sem espaço antes do número
-        qtd = _find(r"QUANTIDADE\s*:?\s*([\d.,]+)", bloco)
-        if not qtd and idx < len(all_qtd):
-            qtd = all_qtd[idx]
-
-        # Valor unitário — aceita R$, RS, R $, ausência do símbolo
-        v_unit = _find(r"VALOR\s+UNIT[A-Z.]*\s*(?:R\s?\$|RS)?\s*([\d.,]+)", bloco)
-        if not v_unit and idx < len(all_vunit):
-            v_unit = all_vunit[idx]
-
-        # Valor total — pega ÚLTIMO match no bloco
-        vtotal_matches = re.findall(
-            r"VALOR\s+TOTAL\s+(?:R\s?\$|RS)?\s*([\d.,' OoIl]+)", bloco, re.IGNORECASE
+        # Linha de cabeçalho da tabela interna (contém MARCA e QUANTIDADE)
+        col_hdr = re.search(
+            r"^.*MARCA.*QUANTIDADE.*$", bloco, re.MULTILINE | re.IGNORECASE
         )
-        v_total = clean_val(vtotal_matches[-1]) if vtotal_matches else ""
-        if not v_total and idx < len(all_vtotal):
-            v_total = all_vtotal[idx]
+
+        marca = unidade = qtd = v_unit = v_total = ""
+
+        if col_hdr:
+            # Linhas após o cabeçalho — primeira não-vazia = linha de valores
+            after = bloco[col_hdr.end():]
+            val_lines = [l.strip() for l in after.splitlines() if l.strip()]
+            val_line = val_lines[0] if val_lines else ""
+
+            # Extrai todos os valores monetários: R$ X,XX ou R$ X.XXX,XX
+            money = re.findall(r"R\$\s*([\d.,]+)", val_line, re.IGNORECASE)
+            money = [clean_num(m) for m in money]
+
+            # Quantidade: número imediatamente antes do primeiro R$
+            qtd_m = re.search(r"([\d.,]+)\s+R\$", val_line, re.IGNORECASE)
+            if qtd_m:
+                qtd = clean_num(qtd_m.group(1))
+                pre = val_line[:qtd_m.start()].strip()
+            else:
+                # Fallback: último número isolado antes de qualquer R$
+                nums = re.findall(r"([\d.,]+)", val_line.split("R$")[0])
+                qtd = clean_num(nums[-1]) if nums else ""
+                pre = re.sub(r"[\d.,]+\s*$", "", val_line.split("R$")[0]).strip()
+
+            # Monetários: 1º = VUNIT, 2º = VTOTAL
+            v_unit  = money[0] if len(money) >= 1 else ""
+            v_total = money[1] if len(money) >= 2 else ""
+
+            # Marca e unidade estão em `pre` (texto antes da quantidade)
+            # Ex: "POTY SACO" ou "CIMENTELA UNIDADE 1.0 UNIDADE"
+            parts = pre.split()
+            if parts:
+                marca = parts[0]
+            if re.search(r"\bSACO\b", pre, re.I):
+                unidade = "SACO"
+            else:
+                unidade = "UNIDADE"
 
         items.append({
             "codigo":         codigo,
