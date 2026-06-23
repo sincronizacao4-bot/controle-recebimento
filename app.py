@@ -101,224 +101,151 @@ USUARIO_CORRETO = "Crislene"
 SENHA_CORRETA   = "Pmm@Seinfra#2025"
 
 def _login_page():
-    st.markdown("""
-    <style>
-        /* Remove padding padrão do Streamlit */
-        [data-testid="stAppViewContainer"] > .main { padding: 0 !important; }
-        [data-testid="stAppViewContainer"] {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #533483 100%);
-            min-height: 100vh;
-        }
-        [data-testid="stHeader"]  { background: transparent !important; }
-        [data-testid="stToolbar"] { visibility: hidden; }
-        #MainMenu, footer         { visibility: hidden; }
-
-        /* Bolhas decorativas de fundo */
-        body::before {
-            content: "";
-            position: fixed;
-            width: 400px; height: 400px;
-            background: radial-gradient(circle, rgba(83,52,131,0.5), transparent 70%);
-            top: -100px; left: -100px;
-            border-radius: 50%;
-            pointer-events: none;
-        }
-        body::after {
-            content: "";
-            position: fixed;
-            width: 350px; height: 350px;
-            background: radial-gradient(circle, rgba(15,52,96,0.6), transparent 70%);
-            bottom: -80px; right: -80px;
-            border-radius: 50%;
-            pointer-events: none;
-        }
-
-        /* Card glassmorphism */
-        .glass-card {
-            background: rgba(255,255,255,0.08);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.18);
-            border-radius: 24px;
-            padding: 48px 40px 40px 40px;
-            max-width: 400px;
-            margin: 60px auto 0 auto;
-            box-shadow: 0 25px 45px rgba(0,0,0,0.4),
-                        0 0 0 1px rgba(255,255,255,0.05) inset;
-        }
-
-        /* Avatar */
-        .avatar-ring {
-            width: 90px; height: 90px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.12);
-            border: 2px solid rgba(255,255,255,0.3);
-            display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 20px auto;
-            font-size: 42px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-        }
-
-        /* Textos */
-        .login-title {
-            text-align: center;
-            font-size: 18px;
-            font-weight: 700;
-            color: #ffffff;
-            margin: 0 0 4px 0;
-            letter-spacing: 0.3px;
-        }
-        .login-sub {
-            text-align: center;
-            font-size: 12px;
-            color: rgba(255,255,255,0.55);
-            margin: 0 0 32px 0;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-        }
-
-        /* Inputs com estilo escuro */
-        [data-testid="stTextInput"] input {
-            background: rgba(255,255,255,0.08) !important;
-            border: 1px solid rgba(255,255,255,0.2) !important;
-            border-radius: 12px !important;
-            color: #ffffff !important;
-            padding: 14px 16px !important;
-            font-size: 14px !important;
-            transition: border 0.2s;
-        }
-        [data-testid="stTextInput"] input:focus {
-            border: 1px solid rgba(255,255,255,0.5) !important;
-            box-shadow: 0 0 0 3px rgba(255,255,255,0.06) !important;
-        }
-        [data-testid="stTextInput"] input::placeholder { color: rgba(255,255,255,0.4) !important; }
-        [data-testid="stTextInput"] label { color: rgba(255,255,255,0.7) !important; font-size:13px !important; }
-
-        /* Botão login */
-        [data-testid="stButton"] > button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-            color: white !important;
-            border: none !important;
-            border-radius: 12px !important;
-            padding: 14px !important;
-            font-size: 15px !important;
-            font-weight: 700 !important;
-            letter-spacing: 1.5px !important;
-            text-transform: uppercase !important;
-            width: 100% !important;
-            margin-top: 8px !important;
-            box-shadow: 0 8px 20px rgba(102,126,234,0.4) !important;
-            transition: all 0.2s !important;
-        }
-        [data-testid="stButton"] > button:hover {
-            transform: translateY(-2px) !important;
-            box-shadow: 0 12px 28px rgba(102,126,234,0.55) !important;
-        }
-
-        /* Mensagem de erro */
-        [data-testid="stAlert"] {
-            background: rgba(231,76,60,0.2) !important;
-            border: 1px solid rgba(231,76,60,0.4) !important;
-            border-radius: 10px !important;
-            color: #ff8a80 !important;
-        }
-
-        .rodape-glass {
-            text-align: center;
-            font-size: 11px;
-            color: rgba(255,255,255,0.3);
-            margin-top: 24px;
-            letter-spacing: 0.5px;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-    _constellation()
     b64 = _brasao_b64()
-    logo_html = f'<img src="data:image/png;base64,{b64}" style="width:72px;height:72px;object-fit:contain;border-radius:8px;" />' if b64 else "🏛️"
+    logo_src = f"data:image/png;base64,{b64}" if b64 else ""
 
     st.markdown(f"""
     <style>
-      /* Wrapper do avatar quadrado com borda dourada giratória */
-      .gold-square-wrap {{
-        position: relative;
-        width: 110px; height: 110px;
-        margin: 0 auto 22px auto;
+      /* ── Fundo ── */
+      [data-testid="stAppViewContainer"] {{
+        background: linear-gradient(135deg,#1a1a2e 0%,#16213e 40%,#0f3460 70%,#533483 100%);
+        min-height:100vh;
       }}
-      /* Borda giratória — conic-gradient dourado */
-      .gold-spinner {{
-        position: absolute; inset: 0;
-        border-radius: 20px;
+      [data-testid="stAppViewContainer"] > .main {{
+        display:flex; align-items:center; justify-content:center;
+        min-height:100vh; padding:0 !important;
+      }}
+      [data-testid="stHeader"], [data-testid="stToolbar"] {{ display:none !important; }}
+      #MainMenu, footer {{ visibility:hidden; }}
+
+      /* ── Card centralizado ── */
+      [data-testid="stVerticalBlock"] > [data-testid="stVerticalBlockBorderWrapper"],
+      .block-container {{
+        padding: 0 !important; max-width:440px !important;
+      }}
+      section.main > div {{
+        display:flex; justify-content:center; padding-top:60px;
+      }}
+
+      /* Aplica glass ao bloco principal */
+      .login-wrap {{
+        background: rgba(255,255,255,0.07);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 28px;
+        padding: 44px 40px 36px;
+        width: 420px;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+      }}
+
+      /* ── Avatar dourado ── */
+      .gold-wrap {{
+        position:relative; width:116px; height:116px;
+        margin:0 auto 20px;
+      }}
+      .gold-spin {{
+        position:absolute; inset:0; border-radius:22px;
         background: conic-gradient(
-          from 0deg,
-          #FFD700 0%, #FFF0A0 15%, #FFA500 30%,
-          transparent 45%, transparent 55%,
-          #FFA500 70%, #FFF0A0 85%, #FFD700 100%
+          #FFD700 0%,#FFF5A0 12%,#FFA500 25%,
+          transparent 40%,transparent 60%,
+          #FFA500 75%,#FFF5A0 88%,#FFD700 100%
         );
-        animation: gold-spin 2.5s linear infinite;
+        animation: gspin 2.4s linear infinite;
       }}
-      @keyframes gold-spin {{ to {{ transform: rotate(360deg); }} }}
-
-      /* Partícula dourada orbitando */
+      @keyframes gspin {{ to {{ transform:rotate(360deg); }} }}
       .gold-dot {{
-        position: absolute;
-        width: 7px; height: 7px;
-        background: radial-gradient(circle, #FFD700, #FFA500);
-        border-radius: 50%;
-        box-shadow: 0 0 8px 2px #FFD700;
-        animation: gold-orbit 2.5s linear infinite;
-        top: -3.5px; left: calc(50% - 3.5px);
-        transform-origin: 3.5px calc(55px + 3.5px);
+        position:absolute; width:8px; height:8px; border-radius:50%;
+        background:radial-gradient(circle,#FFD700,#FF8C00);
+        box-shadow:0 0 10px 3px #FFD70099;
+        top:-4px; left:calc(50% - 4px);
+        transform-origin:4px calc(58px + 4px);
+        animation:gorbit 2.4s linear infinite;
       }}
-      .gold-dot:nth-child(2) {{ animation-delay: -1.25s; }}
-      @keyframes gold-orbit {{ to {{ transform: rotate(360deg); }} }}
-
-      /* Interior do quadrado */
+      .gold-dot.d2 {{ animation-delay:-1.2s; }}
+      @keyframes gorbit {{ to {{ transform:rotate(360deg); }} }}
       .gold-inner {{
-        position: absolute; inset: 3px;
-        border-radius: 17px;
-        background: rgba(15,30,65,0.92);
-        display: flex; align-items: center; justify-content: center;
-        overflow: hidden;
+        position:absolute; inset:4px; border-radius:18px;
+        background:rgba(10,20,55,0.92);
+        display:flex; align-items:center; justify-content:center; overflow:hidden;
       }}
+      .gold-inner img {{ width:80px; height:80px; object-fit:contain; }}
+
+      /* ── Textos ── */
+      .lt {{ text-align:center;font-size:19px;font-weight:700;
+              color:#fff;margin:0 0 4px;letter-spacing:.3px; }}
+      .ls {{ text-align:center;font-size:11px;color:rgba(255,255,255,.5);
+              margin:0 0 28px;letter-spacing:.8px;text-transform:uppercase; }}
+
+      /* ── Inputs ── */
+      [data-testid="stTextInput"] label {{
+        color:rgba(255,255,255,.7) !important; font-size:13px !important; }}
+      [data-testid="stTextInput"] input {{
+        background:rgba(255,255,255,.08) !important;
+        border:1px solid rgba(255,255,255,.2) !important;
+        border-radius:12px !important; color:#fff !important;
+        font-size:14px !important;
+      }}
+      [data-testid="stTextInput"] input:focus {{
+        border-color:rgba(255,255,255,.5) !important;
+        box-shadow:0 0 0 3px rgba(255,255,255,.06) !important;
+      }}
+      [data-testid="stTextInput"] input::placeholder {{
+        color:rgba(255,255,255,.35) !important; }}
+
+      /* ── Botão ── */
+      [data-testid="stButton"] > button {{
+        background:linear-gradient(135deg,#667eea,#764ba2) !important;
+        color:#fff !important; border:none !important;
+        border-radius:12px !important; font-size:15px !important;
+        font-weight:700 !important; letter-spacing:1.5px !important;
+        text-transform:uppercase !important; width:100% !important;
+        margin-top:6px !important;
+        box-shadow:0 8px 20px rgba(102,126,234,.45) !important;
+      }}
+      [data-testid="stButton"] > button:hover {{
+        transform:translateY(-2px) !important;
+        box-shadow:0 12px 28px rgba(102,126,234,.6) !important;
+      }}
+
+      /* ── Erro ── */
+      [data-testid="stAlert"] {{
+        background:rgba(231,76,60,.18) !important;
+        border:1px solid rgba(231,76,60,.4) !important;
+        border-radius:10px !important; color:#ff8a80 !important;
+      }}
+      .lf {{ text-align:center;font-size:11px;
+              color:rgba(255,255,255,.25);margin-top:20px;letter-spacing:.5px; }}
     </style>
 
-    <div class="glass-card">
-      <div class="gold-square-wrap">
-        <div class="gold-spinner"></div>
+    <div class="login-wrap">
+      <div class="gold-wrap">
+        <div class="gold-spin"></div>
         <div class="gold-dot"></div>
-        <div class="gold-dot"></div>
-        <div class="gold-inner">{logo_html}</div>
+        <div class="gold-dot d2"></div>
+        <div class="gold-inner">
+          {"<img src='" + logo_src + "'/>" if logo_src else "🏛️"}
+        </div>
       </div>
-      <p class="login-title">Prefeitura de Maracanaú</p>
-      <p class="login-sub">SEINFRA · Controle de Recebimento</p>
+      <p class="lt">Prefeitura de Maracanaú</p>
+      <p class="ls">SEINFRA · Controle de Recebimento</p>
     </div>
     """, unsafe_allow_html=True)
 
-    # Inputs dentro do card via CSS overlap
-    with st.container():
-        st.markdown('<div style="max-width:400px;margin:0 auto;margin-top:-220px;padding:0 40px;">', unsafe_allow_html=True)
+    _constellation()
 
-        usuario = st.text_input(
-            "Usuário",
-            placeholder="Nome de usuário",
-        )
-        senha = st.text_input(
-            "Senha",
-            type="password",
-            placeholder="••••••••••••••••",
-        )
-        entrar = st.button("LOGIN", use_container_width=True)
+    usuario = st.text_input("Usuário", placeholder="Nome de usuário")
+    senha   = st.text_input("Senha", type="password", placeholder="••••••••••••••••")
+    entrar  = st.button("LOGIN", use_container_width=True)
 
-        if entrar:
-            if usuario.strip().lower() == USUARIO_CORRETO.lower() and senha == SENHA_CORRETA:
-                st.session_state["autenticado"] = True
-                st.rerun()
-            else:
-                st.error("Usuário ou senha incorretos. Tente novamente.")
+    if entrar:
+        if usuario.strip().lower() == USUARIO_CORRETO.lower() and senha == SENHA_CORRETA:
+            st.session_state["autenticado"] = True
+            st.rerun()
+        else:
+            st.error("Usuário ou senha incorretos. Tente novamente.")
 
-        st.markdown('<p class="rodape-glass">Acesso restrito · SEINFRA</p>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<p class="lf">Acesso restrito · SEINFRA</p>', unsafe_allow_html=True)
 
 # ── Controle de sessão ─────────────────────────────────────────────────────────
 if not st.session_state.get("autenticado"):
