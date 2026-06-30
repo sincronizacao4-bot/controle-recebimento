@@ -344,20 +344,35 @@ _labels = {
     "valor_total": "Valor Total",
 }
 
+_items_raw = dados.get("items", [])
+_n_suspeitos = sum(1 for i in _items_raw if i.get("_suspeito"))
+if _n_suspeitos:
+    st.warning(
+        f"⚠️ **{_n_suspeitos} item(ns)** ficaram com algum valor (quantidade, "
+        f"valor unitário ou total) **não reconhecido pelo OCR**. Revise as linhas "
+        f"destacadas na tabela abaixo antes de gerar o documento."
+    )
+
 df_items = pd.DataFrame(
-    dados.get("items", []),
-    columns=_cols,
-) if dados.get("items") else pd.DataFrame(columns=_cols)
+    _items_raw,
+    columns=_cols + ["_suspeito"],
+) if _items_raw else pd.DataFrame(columns=_cols + ["_suspeito"])
 
 edited = st.data_editor(
     df_items,
-    column_config={k: st.column_config.TextColumn(v) for k, v in _labels.items()},
+    column_config={
+        **{k: st.column_config.TextColumn(v) for k, v in _labels.items()},
+        "_suspeito": st.column_config.CheckboxColumn("⚠️ Revisar", help="Marcado automaticamente quando o OCR não conseguiu ler todos os valores deste item."),
+    },
     num_rows="dynamic",
     use_container_width=True,
-    height=min(400, 60 + 35 * max(1, len(df_items))),
+    height=min(420, 60 + 35 * max(1, len(df_items))),
 )
 
-dados["items"] = edited.to_dict("records")
+dados["items"] = [
+    {k: v for k, v in row.items() if k != "_suspeito"}
+    for row in edited.to_dict("records")
+]
 
 # ── Validação de valores ───────────────────────────────────────────────────────
 def _parse_valor(v: str) -> float:
@@ -371,6 +386,23 @@ def _parse_valor(v: str) -> float:
         return float(v)
     except Exception:
         return 0.0
+
+# Validação cruzada por linha: quantidade × valor unitário deve bater com o total
+_linhas_incoerentes = []
+for idx, item in enumerate(dados["items"]):
+    q = _parse_valor(item.get("quantidade", 0))
+    vu = _parse_valor(item.get("valor_unitario", 0))
+    vt = _parse_valor(item.get("valor_total", 0))
+    if q and vu and vt:
+        esperado = q * vu
+        if abs(esperado - vt) > max(0.05, esperado * 0.01):
+            _linhas_incoerentes.append((idx + 1, item.get("descricao", ""), esperado, vt))
+
+if _linhas_incoerentes:
+    msg = "⚠️ **Inconsistência matemática encontrada:**\n"
+    for n, desc, esp, vt in _linhas_incoerentes:
+        msg += f"\n- Item {n} ({desc[:40]}): qtd × vlr unit. = **R$ {esp:,.2f}**, mas total informado é **R$ {vt:,.2f}**"
+    st.error(msg)
 
 _total_itens = sum(_parse_valor(i.get("valor_total", 0)) for i in dados["items"])
 _valor_of    = _parse_valor(dados.get("valor_of", "0"))
@@ -408,9 +440,64 @@ if gerar_btn:
 
     nome_arquivo = f"Controle Recebimento OF {dados.get('numero_of','')}.docx"
     st.download_button(
-        label="⬇️  Baixar Controle de Recebimento",
+        label="⬇️  Baixar Controle de Recebimento (.docx)",
         data=docx_bytes,
         file_name=nome_arquivo,
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        use_container_width=True,
     )
-    st.success("Documento gerado! Clique no botão acima para baixar.")
+
+    st.success("Documento gerado! Baixe o .docx para editar no Word, ou use o preview abaixo para imprimir direto pelo navegador.")
+
+    # ── Preview imprimível direto do navegador (sem precisar abrir o Word) ───
+    with st.expander("🖨️  Visualizar e imprimir (sem precisar do Word)", expanded=False):
+        _itens_html = "".join(
+            f"<tr><td>{i+1}</td><td>{it.get('codigo','')}</td><td style='text-align:left'>{it.get('descricao','')}</td>"
+            f"<td>{it.get('marca','')}</td><td>{it.get('unidade','')}</td><td>{it.get('quantidade','')}</td>"
+            f"<td>{it.get('valor_unitario','')}</td><td>{it.get('valor_total','')}</td></tr>"
+            for i, it in enumerate(dados.get("items", []))
+        )
+        b64_logo = _brasao_b64()
+        _logo_tag = f"<img src='data:image/png;base64,{b64_logo}' style='height:60px'/>" if b64_logo else ""
+
+        preview_html = f"""
+        <div id="doc-preview" style="background:#fff;color:#111;padding:24px;border-radius:8px;
+            font-family:Arial,sans-serif;font-size:12px;max-width:900px;margin:0 auto;">
+          <div style="display:flex;align-items:center;gap:12px;border-bottom:2px solid #1A3F7A;padding-bottom:8px;margin-bottom:12px;">
+            {_logo_tag}
+            <div>
+              <div style="font-weight:bold;font-size:14px;color:#1A3F7A;">Prefeitura Municipal de Maracanaú</div>
+              <div style="font-size:10px;color:#333;">Secretaria de Infraestrutura, Mobilidade e Controle Urbano</div>
+            </div>
+          </div>
+          <h2 style="text-align:center;color:#C05000;text-decoration:underline;font-size:15px;">CONTROLE DE RECEBIMENTO DE MATERIAIS</h2>
+          <p><b>CONTRATADA:</b> {dados.get('fornecedor','')} &nbsp; <b>CNPJ:</b> {dados.get('cnpj','')}</p>
+          <p><b>EMPENHO:</b> {dados.get('empenho','')} &nbsp; <b>DANFE Nº:</b> {dados.get('danfe','')} &nbsp; <b>DATA:</b> {dados.get('data_recebimento','')}</p>
+          <p><b>OBJETO:</b> {dados.get('objeto','')}</p>
+          <table style="width:100%;border-collapse:collapse;margin-top:8px;" border="1">
+            <thead style="background:#1A3F7A;color:#fff;">
+              <tr><th>Nº</th><th>Código</th><th>Descrição</th><th>Marca</th><th>Unid.</th><th>Qtd.</th><th>Vlr Unit.</th><th>Vlr Total</th></tr>
+            </thead>
+            <tbody>{_itens_html}</tbody>
+          </table>
+          <p style="margin-top:24px;"><b>RESPONSÁVEL:</b> {dados.get('responsavel','')} — Matrícula {dados.get('matricula','')}</p>
+          <p>{dados.get('cargo','')}</p>
+        </div>
+        <style>
+          #doc-preview table td, #doc-preview table th {{ border:1px solid #999; padding:4px; text-align:center; }}
+          @media print {{
+            [data-testid="stSidebar"], [data-testid="stHeader"], [data-testid="stToolbar"],
+            .stButton, #MainMenu, footer {{ display:none !important; }}
+          }}
+        </style>
+        <button onclick="window.print()" style="margin-top:12px;padding:10px 22px;background:#1A3F7A;
+            color:#fff;border:none;border-radius:8px;font-weight:bold;cursor:pointer;">
+            🖨️ Imprimir agora
+        </button>
+        """
+        st.markdown(preview_html, unsafe_allow_html=True)
+        st.caption(
+            "Este preview é só para impressão rápida (layout simplificado). "
+            "Para o documento oficial completo (com marca d'água, rodapé e formatação final), "
+            "use o arquivo .docx baixado acima."
+        )

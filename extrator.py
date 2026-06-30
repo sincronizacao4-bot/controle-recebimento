@@ -14,7 +14,7 @@ from typing import Optional
 def _ocr_page(page: fitz.Page) -> str:
     """Renderiza a página como imagem e faz OCR."""
 
-    mat = fitz.Matrix(3, 3)   # 216 dpi
+    mat = fitz.Matrix(4, 4)   # 288 dpi — mais nítido para tabelas pequenas
     pix = page.get_pixmap(matrix=mat)
     img_bytes = pix.tobytes("png")
 
@@ -27,10 +27,18 @@ def _ocr_page(page: fitz.Page) -> str:
     # 2. pytesseract (precisa do Tesseract instalado — disponível no Streamlit Cloud)
     try:
         import pytesseract
-        from PIL import Image
+        from PIL import Image, ImageOps, ImageFilter
         import io
-        img = Image.open(io.BytesIO(img_bytes))
-        return pytesseract.image_to_string(img, lang="por")
+        img = Image.open(io.BytesIO(img_bytes)).convert("L")  # escala de cinza
+        img = ImageOps.autocontrast(img)                       # realça contraste
+        img = img.filter(ImageFilter.SHARPEN)                  # realça bordas do texto
+        config = "--psm 6"  # assume bloco uniforme de texto (melhor p/ tabelas)
+        texto = pytesseract.image_to_string(img, lang="por", config=config)
+        if not texto.strip():
+            # Segunda tentativa sem pré-processamento, caso o contraste tenha piorado a leitura
+            img2 = Image.open(io.BytesIO(img_bytes))
+            texto = pytesseract.image_to_string(img2, lang="por")
+        return texto
     except Exception:
         pass
 
@@ -124,7 +132,13 @@ def _parse_items(full_text: str) -> list[dict]:
     def clean_num(v: str) -> str:
         v = str(v).strip()
         v = v.replace("OO","00").replace("O","0").replace("l","1").replace("I","1")
+        v = v.replace("S", "5") if re.fullmatch(r"[\dSO.,]+", v) else v
         return v.replace(" ", "")
+
+    # Padrões tolerantes a abreviações e ruído de OCR
+    _RE_QTD    = r"(?:QUANTIDADE|QUANT\.?|QTDE?\.?)\s*[:\s]\s*([\d.,]+)"
+    _RE_VUNIT  = r"VA?LO?R\s+UNIT[A-ZÁ-Ú]*\.?\s*[:\s]?\s*(?:R\$)?\s*([\d.,]+)"
+    _RE_VTOTAL = r"VA?LO?R\s+TO?TA?L\.?\s*[:\s]?\s*(?:R\$)?\s*([\d.,]+)"
 
     def money_in(text: str) -> list[str]:
         """Retorna todos os valores R$ encontrados no texto, limpos."""
@@ -151,12 +165,10 @@ def _parse_items(full_text: str) -> list[dict]:
 
     # ── Listas globais (Estratégia 3) ─────────────────────────────────────────
     # Captura todos os valores numéricos após QUANTIDADE / VALOR UNIT / VALOR TOTAL
-    g_qtd    = [clean_num(v) for v in re.findall(r"QUANTIDADE\s+([\d.,]+)", full_text, re.I)]
-    g_vunit  = [clean_num(v) for v in re.findall(
-                    r"VALOR\s+UNIT[^\n$R]*?(?:R\$)?\s*([\d.,]+)", full_text, re.I)]
-    g_vtotal = [clean_num(v) for v in re.findall(
-                    r"VALOR\s+TOTAL\s+(?:R\$)?\s*([\d.,]+)", full_text, re.I)]
-    g_marca  = re.findall(r"MARCA\s+([A-Za-zÀ-ú][\w\-À-ú]*)", full_text, re.I)
+    g_qtd    = [clean_num(v) for v in re.findall(_RE_QTD, full_text, re.I)]
+    g_vunit  = [clean_num(v) for v in re.findall(_RE_VUNIT, full_text, re.I)]
+    g_vtotal = [clean_num(v) for v in re.findall(_RE_VTOTAL, full_text, re.I)]
+    g_marca  = re.findall(r"MARCA\s*[:\s]\s*([A-Za-zÀ-ú][\w\-À-ú]*)", full_text, re.I)
 
     items = []
     for idx, (pos, codigo, desc_raw) in enumerate(starts):
@@ -172,7 +184,7 @@ def _parse_items(full_text: str) -> list[dict]:
         marca = unidade = qtd = v_unit = v_total = ""
 
         # ══ ESTRATÉGIA 1: cabeçalho de tabela + linha de valores ══════════════
-        col_hdr = re.search(r"^.*MARCA.*QUANTIDADE.*$", bloco, re.MULTILINE | re.I)
+        col_hdr = re.search(r"^.*MARCA.*(?:QUANTIDADE|QUANT|QTDE?).*$", bloco, re.MULTILINE | re.I)
         if col_hdr:
             after     = bloco[col_hdr.end():]
             val_lines = [l.strip() for l in after.splitlines() if l.strip()]
@@ -198,18 +210,27 @@ def _parse_items(full_text: str) -> list[dict]:
 
         # ══ ESTRATÉGIA 2: palavras-chave inline no bloco ══════════════════════
         if not qtd:
-            qtd = _find(r"QUANTIDADE\s+([\d.,]+)", bloco)
-            qtd = clean_num(qtd)
+            qtd = clean_num(_find(_RE_QTD, bloco))
         if not v_unit:
-            v_unit = clean_num(_find(r"VALOR\s+UNIT[^\n$R]*?(?:R\$)?\s*([\d.,]+)", bloco))
+            v_unit = clean_num(_find(_RE_VUNIT, bloco))
         if not v_total:
             # Pega o ÚLTIMO match de VALOR TOTAL no bloco (evita pegar do item anterior)
-            vt_all = re.findall(r"VALOR\s+TOTAL\s+(?:R\$)?\s*([\d.,]+)", bloco, re.I)
+            vt_all = re.findall(_RE_VTOTAL, bloco, re.I)
             v_total = clean_num(vt_all[-1]) if vt_all else ""
         if not marca:
-            marca = _find(r"MARCA\s+([A-Za-zÀ-ú][\w\-À-ú]*)", bloco)
+            marca = _find(r"MARCA\s*[:\s]\s*([A-Za-zÀ-ú][\w\-À-ú]*)", bloco)
         if not unidade:
             unidade = best_unidade(bloco)
+
+        # ══ ESTRATÉGIA 4: valores monetários "soltos" no bloco (sem rótulo legível) ══
+        # Quando o OCR engole os rótulos mas mantém os números, usa os valores R$
+        # encontrados no bloco, na ordem em que aparecem (unitário antes do total).
+        if not v_unit or not v_total:
+            soltos = money_in(bloco)
+            if not v_unit and len(soltos) >= 1:
+                v_unit = soltos[0]
+            if not v_total and len(soltos) >= 2:
+                v_total = soltos[1]
 
         # ══ ESTRATÉGIA 3: listas globais indexadas ════════════════════════════
         if not qtd     and idx < len(g_qtd):    qtd    = g_qtd[idx]
@@ -233,6 +254,9 @@ def _parse_items(full_text: str) -> list[dict]:
             except Exception:
                 pass
 
+        # Marca como suspeito qualquer item sem os 3 valores numéricos essenciais
+        suspeito = not (qtd and v_unit and v_total)
+
         items.append({
             "codigo":         codigo,
             "descricao":      descricao,
@@ -241,6 +265,7 @@ def _parse_items(full_text: str) -> list[dict]:
             "quantidade":     qtd,
             "valor_unitario": v_unit,
             "valor_total":    v_total,
+            "_suspeito":      suspeito,
         })
 
     return items
